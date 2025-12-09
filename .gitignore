@@ -1,0 +1,53 @@
+# Environment variables
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Data files (large datasets shouldn't be in git)
+data/raw/*
+!data/raw/README.md
+data/interim/*
+!data/interim/README.md
+data/processed/*
+!data/processed/README.md
+*.nc
+*.h5
+*.hdf5
+*.hdf
+*.zip
+*.tar
+*.tar.gz
+*.tif
+*.tiff
+*.geotiff
+
+# Model files (can be large)
+models/final/*.pkl
+models/final/*.joblib
+*.pkl
+*.joblib
+
+# Predictions/outputs (can be large)
+models/final/predictions/*.csv
+models/final/predictions/*.parquet
+
+# Self-assessment
+SELF_ASSESSMENT.md
+
+# OS
+.DS_Store
+Thumbs.db
