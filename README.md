@@ -33,6 +33,8 @@ For detailed setup instructions, see [SETUP.md](SETUP.md).
 
 ![P-Model Evaluation](models/final/visualizations/p_model_evaluation.png)
 
+![P-Model Confusion Matrix](models/final/visualizations/p_model_confusion_matrix.png)
+
 ### A-Model (Log Burned Area Regressor)
 
 - **RMSE**: 0.896 (log scale) / 937.13 hectares (original scale)
@@ -42,13 +44,19 @@ For detailed setup instructions, see [SETUP.md](SETUP.md).
 
 ![A-Model Evaluation](models/final/visualizations/a_model_evaluation.png)
 
-### Combined Hazard Score
+![A-Model Residuals](models/final/visualizations/a_model_residuals.png)
 
+### Combined Model (Hazard Score)
+
+- **RMSE**: 647.68 hectares
+- **MAE**: 322.22 hectares
+- **R²**: 0.752
+- **Spearman Correlation**: 0.869
 - Hazard scores range from 0.00 to 3,318.11 hectares
-- Mean hazard: 749.47 hectares
-- Median hazard: 30.82 hectares
 
 ![Hazard Score Analysis](models/final/visualizations/hazard_score_analysis.png)
+
+![Combined Model Evaluation](models/final/visualizations/combined_model_evaluation.png)
 
 For more detailed analysis, see `notebooks/visualize_evaluation_metrics.ipynb`.
 

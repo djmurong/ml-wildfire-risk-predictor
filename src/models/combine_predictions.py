@@ -13,6 +13,8 @@ import numpy as np
 import joblib
 from pathlib import Path
 import sys
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from scipy.stats import spearmanr
 
 PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data/processed"
 MODELS_DIR = Path(__file__).resolve().parents[2] / "models/final"
@@ -267,6 +269,38 @@ def combine_predictions(data_path=None, output_path=None):
             rmse = np.sqrt(((results.loc[area_mask, 'burned_area'] - results.loc[area_mask, 'actual_burned_area']) ** 2).mean())
             print(f"Burned area MAE: {mae:.4f}")
             print(f"Burned area RMSE: {rmse:.4f}")
+        
+        # Combined hazard score evaluation
+        print("\n" + "=" * 70)
+        print("Combined Hazard Score Evaluation")
+        print("=" * 70)
+        
+        # Compute actual hazard: 0 if no ignition, burned_area if ignition occurred
+        results['actual_hazard'] = np.where(
+            results['actual_ignition'] == 1,
+            results['actual_burned_area'],
+            0.0
+        )
+        
+        # Filter to samples with valid actual values
+        valid_mask = results['actual_ignition'].notna() & results['actual_burned_area'].notna()
+        if valid_mask.sum() > 0:
+            y_pred = results.loc[valid_mask, 'hazard_score'].values
+            y_true = results.loc[valid_mask, 'actual_hazard'].values
+            
+            # Overall metrics
+            rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+            mae = mean_absolute_error(y_true, y_pred)
+            r2 = r2_score(y_true, y_pred)
+            
+            # Spearman correlation (rank correlation)
+            spearman_corr, spearman_p = spearmanr(y_true, y_pred)
+            
+            print(f"\nOverall Metrics (all {valid_mask.sum()} samples):")
+            print(f"  RMSE: {rmse:.4f} hectares")
+            print(f"  MAE:  {mae:.4f} hectares")
+            print(f"  R²:   {r2:.4f}")
+            print(f"  Spearman Correlation: {spearman_corr:.4f} (p={spearman_p:.4e})")
     
     return results
 
