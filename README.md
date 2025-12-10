@@ -19,8 +19,8 @@ For detailed setup instructions, see [SETUP.md](SETUP.md).
 
 ## Video Links
 
-- **Demo Video**: [Link to demo video - update with your video URL]
-- **Technical Walkthrough**: [Link to technical walkthrough video - update with your video URL]
+- **Demo Video**: https://www.youtube.com/watch?v=t6jpiYMGg5A
+- **Technical Walkthrough**: https://www.youtube.com/watch?v=9XhQJX3Ij2U
 
 ## Evaluation
 
