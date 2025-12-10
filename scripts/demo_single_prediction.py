@@ -76,6 +76,25 @@ def load_sample(data_path, sample_idx=None):
     return sample, sample_idx
 
 
+def load_training_medians(features):
+    """Load training data medians for proper missing value imputation."""
+    train_path = PROCESSED_DIR / "train.csv"
+    if not train_path.exists():
+        return None
+    
+    try:
+        train_df = pd.read_csv(train_path)
+        # Only load the features we need
+        available_features = [f for f in features if f in train_df.columns]
+        if len(available_features) < len(features):
+            print(f"Warning: Only {len(available_features)}/{len(features)} features found in training data")
+        medians = train_df[available_features].median()
+        return medians
+    except Exception as e:
+        print(f"Warning: Could not load training medians: {e}")
+        return None
+
+
 def make_prediction(sample, verbose=True):
     """Make prediction for a single sample."""
     print("\n" + "=" * 70)
@@ -115,9 +134,20 @@ def make_prediction(sample, verbose=True):
         print(f"   ✓ P-model expects {len(p_features)} features")
         print(f"   ✓ A-model expects {len(a_features)} features")
     
+    # Load training medians for proper imputation
+    if verbose:
+        print("\n3. Loading training data medians for missing value imputation...")
+    
+    p_medians = load_training_medians(p_features)
+    a_medians = load_training_medians(a_features)
+    
+    if p_medians is None or a_medians is None:
+        if verbose:
+            print("   ⚠ Training medians not available, will use 0 for missing values")
+    
     # Extract features
     if verbose:
-        print("\n3. Extracting features from sample...")
+        print("\n4. Extracting features from sample...")
     
     # Convert sample to DataFrame for easier feature extraction
     sample_df = pd.DataFrame([sample])
@@ -128,24 +158,39 @@ def make_prediction(sample, verbose=True):
     # Get features for A-model
     X_a = sample_df[a_features].copy()
     
-    # Handle missing values
+    # Handle missing values using training medians (matching training workflow)
     if X_p.isnull().any().any():
         if verbose:
-            print("   ⚠ Missing values detected, filling with median...")
-        # For single sample, use 0 or mean from training (simplified)
-        X_p = X_p.fillna(0)
+            print("   ⚠ Missing values detected in P-model features, filling with training medians...")
+        if p_medians is not None:
+            # Fill missing values with training medians
+            for col in X_p.columns:
+                if X_p[col].isnull().any() and col in p_medians.index:
+                    X_p[col] = X_p[col].fillna(p_medians[col])
+            # Fill any remaining missing values with 0
+            X_p = X_p.fillna(0)
+        else:
+            X_p = X_p.fillna(0)
     
     if X_a.isnull().any().any():
         if verbose:
-            print("   ⚠ Missing values detected, filling with median...")
-        X_a = X_a.fillna(0)
+            print("   ⚠ Missing values detected in A-model features, filling with training medians...")
+        if a_medians is not None:
+            # Fill missing values with training medians
+            for col in X_a.columns:
+                if X_a[col].isnull().any() and col in a_medians.index:
+                    X_a[col] = X_a[col].fillna(a_medians[col])
+            # Fill any remaining missing values with 0
+            X_a = X_a.fillna(0)
+        else:
+            X_a = X_a.fillna(0)
     
     if verbose:
         print("   ✓ Features extracted and prepared")
     
     # Make predictions
     if verbose:
-        print("\n4. Running P-model (ignition probability)...")
+        print("\n5. Running P-model (ignition probability)...")
     
     p_ignition = p_model.predict_proba(X_p)[0, 1]  # Probability of ignition
     
@@ -157,7 +202,7 @@ def make_prediction(sample, verbose=True):
             print(f"   → Prediction: Fire unlikely (probability ≤ 50%)")
     
     if verbose:
-        print("\n5. Running A-model (conditional burned area)...")
+        print("\n6. Running A-model (conditional burned area)...")
     
     log_burned_area = a_model.predict(X_a)[0]
     burned_area = np.exp(log_burned_area)
@@ -168,7 +213,7 @@ def make_prediction(sample, verbose=True):
     
     # Combine predictions
     if verbose:
-        print("\n6. Computing hazard score...")
+        print("\n7. Computing hazard score...")
     
     hazard_score = p_ignition * burned_area
     
@@ -272,12 +317,22 @@ def main():
             print("Usage: python scripts/demo_single_prediction.py [sample_index]")
             sys.exit(1)
     
+    # Check if models exist
+    p_model_path = MODELS_DIR / "xgb_wildfire_classifier_ignition.pkl"
+    a_model_path = MODELS_DIR / "xgb_wildfire_regressor_log_burned_area.pkl"
+    
+    if not p_model_path.exists() or not a_model_path.exists():
+        print(f"Error: Trained models not found in {MODELS_DIR}")
+        print("Please train the models first:")
+        print("  python src/models/train_model.py")
+        sys.exit(1)
+    
     # Load test data
     test_path = PROCESSED_DIR / "test.csv"
     if not test_path.exists():
         print(f"Error: Test data not found at {test_path}")
         print("Please run the data preparation pipeline first:")
-        print("  1. python src/data/extract_wildfirespreadts_embeddings.py")
+        print("  1. python src/data/extract_cnn_embeddings.py")
         print("  2. python src/data/prepare_wildfirespreadts_features.py")
         print("  3. python src/data/split_data.py")
         sys.exit(1)

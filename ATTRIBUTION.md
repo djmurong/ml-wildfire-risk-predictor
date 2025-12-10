@@ -12,6 +12,20 @@ This document provides detailed attributions for all sources, datasets, librarie
 - **Usage**: Primary dataset for wildfire prediction training and evaluation
 - **URL**: https://zenodo.org/records/8006177
 
+### WildfireSpreadTS Dataloader
+
+- **Source**: [WildfireSpreadTS GitHub Repository](https://github.com/SebastianGer/WildfireSpreadTS)
+- **Files Used**:
+  - `src/dataloader/FireSpreadDataset.py` - PyTorch Dataset class
+  - `src/dataloader/FireSpreadDataModule.py` - PyTorch Lightning DataModule
+  - `src/dataloader/utils.py` - Utility functions
+- **Usage**: Provides structured data access with proper band labeling and consistent feature extraction
+- **Key Features**:
+  - Knows which bands are which (fire detection, weather, topography, etc.)
+  - Ensures 1:1 matching between CNN embeddings and TIF features
+  - Handles data preprocessing and normalization
+- **Note**: Band 22 (active fire detection) is used as a label, not a feature, to prevent data leakage
+
 ## Software Libraries and Frameworks
 
 ### Core Machine Learning
@@ -44,6 +58,8 @@ This document provides detailed attributions for all sources, datasets, librarie
 - **xarray** (>=2023.6): N-dimensional labeled arrays
 - **geopandas** (>=0.12): Geospatial data operations
 - **pyarrow** (>=10.0): Parquet file format support
+- **pytorch-lightning** (>=2.0): Required for WildfireSpreadTS dataloader
+- **einops** (>=0.6): Tensor operations for dataloader
 
 ### Visualization
 
@@ -83,8 +99,10 @@ The model design was inspired my elements discussed in the literature review in 
 
 ### Feature Engineering
 
-- CNN embeddings extracted using pre-trained ResNet50 (torchvision)
-- Multi-modal feature combination from satellite imagery and geospatial data
+- CNN embeddings extracted using pre-trained ResNet50 (torchvision) via `src/data/extract_cnn_embeddings.py`
+- Multi-modal feature combination from satellite imagery and geospatial data via `src/data/prepare_wildfirespreadts_features.py`
+- Spatial aggregation and temporal flattening of features for XGBoost compatibility
+- WildfireSpreadTS dataloader used for consistent feature extraction and proper band labeling
 
 ## References
 

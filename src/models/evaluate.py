@@ -31,7 +31,7 @@ def _get_feature_list(test_df, exclude_cols=None):
             'filename', 'date', 'event_id', 'tile',
             'ignition', 'burned_area', 'log_burned_area',
             'year', 'month', 'day_of_year', 'day_of_week',
-            'matched'
+            'matched', 'split', 'sample_idx'  # Added split and sample_idx from dataloader
         ]
     
     # Get all columns except excluded ones

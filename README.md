@@ -8,7 +8,7 @@ This project implements a two-head machine learning pipeline for predicting wild
 
 1. **Install dependencies**: `pip install -r requirements.txt`
 2. **Prepare data**: Place WildfireSpreadTS dataset in `data/raw/wildfirespreadts/`
-3. **Extract embeddings**: `python src/data/extract_wildfirespreadts_embeddings.py`
+3. **Extract embeddings**: `python src/data/extract_cnn_embeddings.py`
 4. **Prepare features**: `python src/data/prepare_wildfirespreadts_features.py`
 5. **Split data**: `python src/data/split_data.py`
 6. **Train models**: `python src/models/train_model.py`
@@ -26,29 +26,33 @@ For detailed setup instructions, see [SETUP.md](SETUP.md).
 
 ### P-Model (Ignition Classifier)
 
-- **ROC-AUC**: 1.000
-- **PR-AUC**: 1.000
-- **Accuracy**: 1.000
-- **F1-Score**: 1.000
+- **ROC-AUC**: 0.8862
+- **PR-AUC**: 0.9357
+- **Accuracy**: 0.8128
+- **Precision**: 0.9030
+- **Recall**: 0.7807
+- **F1-Score**: 0.8374
+- **False Positive Rate**: 5.18% (101 cases)
+- **False Negative Rate**: 13.54% (264 cases)
 
 ![P-Model Evaluation](models/final/visualizations/p_model_evaluation.png)
 
 ### A-Model (Log Burned Area Regressor)
 
-- **RMSE**: 0.896 (log scale) / 937.13 hectares (original scale)
-- **MAE**: 666.22 hectares
-- **R²**: 0.057
-- **Spearman Correlation**: 0.621
+- **RMSE**: 1.369 (log scale) / 493.21 hectares (original scale)
+- **MAE**: 121.61 hectares
+- **R²**: 0.3190
+- **Spearman Correlation**: 0.8005
+- **Underestimation Rate**: 73.50% (systematic bias)
 
 ![A-Model Evaluation](models/final/visualizations/a_model_evaluation.png)
 
 ### Combined Model (Hazard Score)
 
-- **RMSE**: 647.68 hectares
-- **MAE**: 322.22 hectares
-- **R²**: 0.752
-- **Spearman Correlation**: 0.869
-- Hazard scores range from 0.00 to 3,318.11 hectares
+- **RMSE**: 389.19 hectares
+- **MAE**: 77.45 hectares
+- **R²**: 0.4122
+- **Spearman Correlation**: 0.8039
 
 ![Hazard Score Analysis](models/final/visualizations/hazard_score_analysis.png)
 

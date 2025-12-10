@@ -33,7 +33,7 @@ def _get_feature_list(train_df, exclude_cols=None):
             'filename', 'date', 'event_id', 'tile',
             'ignition', 'burned_area', 'log_burned_area',
             'year', 'month', 'day_of_year', 'day_of_week',
-            'matched'
+            'matched', 'split', 'sample_idx'  # Added split and sample_idx from dataloader
         ]
     
     # Get all columns except excluded ones
@@ -107,11 +107,12 @@ def train_xgb(
         print("\nDetecting features from training data...")
         features = _get_feature_list(train_df)
         embedding_count = len([c for c in features if c.startswith('embedding_')])
-        tif_count = len([c for c in features if c.startswith('tif_band_')])
-        other_count = len(features) - embedding_count - tif_count
+        tif_feature_count = len([c for c in features if c.startswith('tif_feature_')])
+        other_count = len(features) - embedding_count - tif_feature_count
         print(f"  Found {len(features)} features:")
         print(f"    - {embedding_count} embedding features")
-        print(f"    - {tif_count} tif band features")
+        if tif_feature_count > 0:
+            print(f"    - {tif_feature_count} TIF features (from dataloader)")
         if other_count > 0:
             print(f"    - {other_count} other features")
     else:

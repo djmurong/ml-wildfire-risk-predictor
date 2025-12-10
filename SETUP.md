@@ -37,6 +37,7 @@ pip install -r requirements.txt
 
 - `pyhdf` requires HDF4 libraries (install via conda-forge on Windows)
 - `rasterio` may require GDAL system libraries
+- `pytorch-lightning` and `einops` are required for the WildfireSpreadTS dataloader (used for feature extraction)
 
 ## Step 4: Download Dataset
 
@@ -55,15 +56,21 @@ pip install -r requirements.txt
 ## Step 5: Run Data Preparation Pipeline
 
 ```bash
-# Extract CNN embeddings from images
-python src/data/extract_wildfirespreadts_embeddings.py
+# Extract CNN embeddings from satellite imagery (uses WildfireSpreadTS dataloader)
+python src/data/extract_cnn_embeddings.py
 
-# Prepare features and labels
+# Prepare features and labels (combines embeddings with TIF features via dataloader)
 python src/data/prepare_wildfirespreadts_features.py
 
-# Split data into train/val/test sets
+# Split data into train/val/test sets (random split: 70% train, 15% val, 15% test)
 python src/data/split_data.py
 ```
+
+**Note**: The feature extraction scripts use the WildfireSpreadTS dataloader (`src/dataloader/`) to ensure:
+
+- Proper band labeling (knows which bands are features vs labels)
+- Consistent 1:1 matching between CNN embeddings and TIF features
+- Correct exclusion of label bands (band 22 = active fire detection) from features to prevent data leakage
 
 ## Step 6: Train Models
 

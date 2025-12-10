@@ -51,8 +51,18 @@ def test_xgb_models_exist_and_predict():
     # Prepare test data (small sample)
     X = df[common_features].head(10).copy()
     
-    # Handle missing values
-    if X.isnull().any().any():
+    # Handle missing values (use training medians if available, otherwise test median)
+    train_path = Path("data/processed/train.csv")
+    if train_path.exists():
+        try:
+            train_df = pd.read_csv(train_path)
+            train_medians = train_df[common_features].median()
+            X = X.fillna(train_medians)
+        except Exception:
+            # Fallback to test median
+            X = X.fillna(X.median())
+    else:
+        # Fallback to test median
         X = X.fillna(X.median())
     
     # Make predictions

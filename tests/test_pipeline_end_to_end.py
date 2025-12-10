@@ -7,6 +7,7 @@ def test_run_basic_pipeline():
     """Test that the basic pipeline scripts can run (without actually running them)."""
     # Check that key scripts exist
     scripts = [
+        "src/data/extract_cnn_embeddings.py",
         "src/data/prepare_wildfirespreadts_features.py",
         "src/data/split_data.py",
         "src/models/train_model.py"

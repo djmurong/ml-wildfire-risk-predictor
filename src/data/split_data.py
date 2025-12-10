@@ -1,5 +1,9 @@
+"""
+Split data into train/val/test sets using random split.
+"""
+
 import pandas as pd
-from sklearn.model_selection import train_test_split
+import numpy as np
 from pathlib import Path
 import sys
 
@@ -7,41 +11,16 @@ PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data/processed"
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def random_split(df, test_size=0.15, val_size=0.15):
-    """
-    Random split.
-    
-    Suitable for:
-    - Short time periods (e.g., 2018-2021) where temporal split leaves insufficient training data
-    - Next-day prediction tasks (operational forecasting) where temporal trends are less critical
-    - When spatial/temporal structure is already captured in features
-    
-    Args:
-        df: DataFrame to split
-        test_size: Proportion for test set
-        val_size: Proportion for validation set
-    
-    Returns:
-        train_df, val_df, test_df
-    """
-    trainval_df, test_df = train_test_split(df, test_size=test_size, random_state=42)
-    val_ratio = val_size / (1 - test_size)
-    train_df, val_df = train_test_split(trainval_df, test_size=val_ratio, random_state=42)
-    return train_df, val_df, test_df
-
-
-def split_data(
-    input_file,
-    test_size=0.15,
-    val_size=0.15
-):
+def split_data(input_file, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, random_seed=42):
     """
     Split data into train/validation/test sets using random split.
     
     Args:
-        input_file: Path to input CSV
-        test_size: Proportion for test set (default: 0.15)
-        val_size: Proportion for validation set (default: 0.15)
+        input_file: Path to input CSV file
+        train_ratio: Proportion of data for training (default: 0.7)
+        val_ratio: Proportion of data for validation (default: 0.15)
+        test_ratio: Proportion of data for testing (default: 0.15)
+        random_seed: Random seed for reproducibility (default: 42)
     
     Returns:
         train_df, val_df, test_df
@@ -52,15 +31,46 @@ def split_data(
     
     print(f"Loading data from {input_file}...")
     df = pd.read_csv(input_file)
-    print(f"Total samples: {len(df)}")
+    print(f"Total samples: {len(df):,}")
     
-    # Perform random split
-    print(f"\nSplitting data using random split")
+    # Validate ratios
+    if abs(train_ratio + val_ratio + test_ratio - 1.0) > 1e-6:
+        raise ValueError(f"Ratios must sum to 1.0, got {train_ratio + val_ratio + test_ratio}")
+    
+    # Random split
+    print(f"\nUsing random split")
     print("="*70)
+    print(f"  Train ratio: {train_ratio:.1%}")
+    print(f"  Val ratio:   {val_ratio:.1%}")
+    print(f"  Test ratio:  {test_ratio:.1%}")
+    print(f"  Random seed: {random_seed}")
     
-    train_df, val_df, test_df = random_split(df, test_size, val_size)
-    print("Random split")
-    print("  Note: Suitable for short time periods (e.g., 2018-2021) or next-day prediction tasks")
+    # Set random seed for reproducibility
+    np.random.seed(random_seed)
+    
+    # Shuffle data
+    df_shuffled = df.sample(frac=1, random_state=random_seed).reset_index(drop=True)
+    
+    # Calculate split indices
+    n_total = len(df_shuffled)
+    n_train = int(n_total * train_ratio)
+    n_val = int(n_total * val_ratio)
+    # n_test = n_total - n_train - n_val  # Remaining goes to test
+    
+    # Split data
+    train_df = df_shuffled[:n_train].copy()
+    val_df = df_shuffled[n_train:n_train + n_val].copy()
+    test_df = df_shuffled[n_train + n_val:].copy()
+    
+    # Show year distribution if available
+    if 'year' in df.columns:
+        print(f"\nYear distribution (random split):")
+        train_years = sorted(train_df['year'].unique())
+        val_years = sorted(val_df['year'].unique())
+        test_years = sorted(test_df['year'].unique())
+        print(f"  Train years: {train_years} ({len(train_years)} unique years)")
+        print(f"  Val years:   {val_years} ({len(val_years)} unique years)")
+        print(f"  Test years:  {test_years} ({len(test_years)} unique years)")
     
     # Print split statistics
     print(f"\nSplit results:")
@@ -92,21 +102,29 @@ def split_data(
 if __name__ == "__main__":
     import argparse
     
-    parser = argparse.ArgumentParser(description='Split data into train/val/test sets using random split')
+    parser = argparse.ArgumentParser(
+        description='Split data into train/val/test sets using random split.'
+    )
     parser.add_argument('--input-file', default='data/processed/features.csv',
                         help='Input CSV file')
-    parser.add_argument('--test-size', type=float, default=0.15,
-                        help='Proportion for test set (default: 0.15)')
-    parser.add_argument('--val-size', type=float, default=0.15,
-                        help='Proportion for validation set (default: 0.15)')
+    parser.add_argument('--train-ratio', type=float, default=0.7,
+                        help='Proportion of data for training (default: 0.7)')
+    parser.add_argument('--val-ratio', type=float, default=0.15,
+                        help='Proportion of data for validation (default: 0.15)')
+    parser.add_argument('--test-ratio', type=float, default=0.15,
+                        help='Proportion of data for testing (default: 0.15)')
+    parser.add_argument('--random-seed', type=int, default=42,
+                        help='Random seed for reproducibility (default: 42)')
     
     args = parser.parse_args()
     
     try:
         split_data(
             input_file=args.input_file,
-            test_size=args.test_size,
-            val_size=args.val_size
+            train_ratio=args.train_ratio,
+            val_ratio=args.val_ratio,
+            test_ratio=args.test_ratio,
+            random_seed=args.random_seed
         )
     except Exception as e:
         print(f"\nError: {e}", file=sys.stderr)

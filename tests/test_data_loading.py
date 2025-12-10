@@ -6,7 +6,7 @@ def test_interim_embeddings_exists():
     """Test that CNN embeddings exist in interim folder."""
     p = Path("data/interim/wildfirespreadts_embeddings.parquet")
     if not p.exists():
-        pytest.skip("Embeddings not found. Run src/data/extract_wildfirespreadts_embeddings.py first.")
+        pytest.skip("Embeddings not found. Run src/data/extract_cnn_embeddings.py first.")
     # Try to load (parquet file)
     try:
         import pyarrow.parquet as pq
@@ -29,5 +29,5 @@ def test_processed_features_exists():
     assert 'burned_area' in df.columns, "Missing 'burned_area' column"
     assert 'log_burned_area' in df.columns, "Missing 'log_burned_area' column"
     # Check for some feature columns (embeddings or tif bands)
-    feature_cols = [c for c in df.columns if c.startswith('embedding_') or c.startswith('tif_band_')]
-    assert len(feature_cols) > 0, "No feature columns found (embedding_* or tif_band_*)"
+    feature_cols = [c for c in df.columns if c.startswith('embedding_') or c.startswith('tif_feature_')]
+    assert len(feature_cols) > 0, "No feature columns found (embedding_* or tif_feature_*)"

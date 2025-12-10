@@ -37,6 +37,8 @@ Pillow>=9.0
 # Deep Learning (for extract_embeddings.py)
 torch>=2.0
 torchvision>=0.15
+pytorch-lightning>=2.0.0  # Required for WildfireSpreadTS dataloader
+einops>=0.6.0  # Required for WildfireSpreadTS dataloader
 
 # Optional / scaling
 dask[complete]>=2023.6

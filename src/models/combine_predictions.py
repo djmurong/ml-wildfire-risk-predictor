@@ -29,7 +29,7 @@ def _get_feature_list(df, exclude_cols=None):
             'filename', 'date', 'event_id', 'tile',
             'ignition', 'burned_area', 'log_burned_area',
             'year', 'month', 'day_of_year', 'day_of_week',
-            'matched'
+            'matched', 'split', 'sample_idx'  # Added split and sample_idx from dataloader
         ]
     return [col for col in df.columns if col not in exclude_cols]
 
