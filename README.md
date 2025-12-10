@@ -33,8 +33,6 @@ For detailed setup instructions, see [SETUP.md](SETUP.md).
 
 ![P-Model Evaluation](models/final/visualizations/p_model_evaluation.png)
 
-![P-Model Confusion Matrix](models/final/visualizations/p_model_confusion_matrix.png)
-
 ### A-Model (Log Burned Area Regressor)
 
 - **RMSE**: 0.896 (log scale) / 937.13 hectares (original scale)
@@ -43,8 +41,6 @@ For detailed setup instructions, see [SETUP.md](SETUP.md).
 - **Spearman Correlation**: 0.621
 
 ![A-Model Evaluation](models/final/visualizations/a_model_evaluation.png)
-
-![A-Model Residuals](models/final/visualizations/a_model_residuals.png)
 
 ### Combined Model (Hazard Score)
 
@@ -55,8 +51,6 @@ For detailed setup instructions, see [SETUP.md](SETUP.md).
 - Hazard scores range from 0.00 to 3,318.11 hectares
 
 ![Hazard Score Analysis](models/final/visualizations/hazard_score_analysis.png)
-
-![Combined Model Evaluation](models/final/visualizations/combined_model_evaluation.png)
 
 For more detailed analysis, see `notebooks/visualize_evaluation_metrics.ipynb`.
 
