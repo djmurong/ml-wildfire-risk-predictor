@@ -39,8 +39,8 @@ For detailed setup instructions, see [SETUP.md](SETUP.md).
 
 ### A-Model (Log Burned Area Regressor)
 
-- **RMSE**: 1.369 (log scale) / 493.21 hectares (original scale)
-- **MAE**: 121.61 hectares
+- **RMSE**: 1.369 (log scale) or 493.21 hectares (original scale)
+- **MAE**: 0.939 (log scale) or 121.61 hectares (original scale)
 - **R²**: 0.3190
 - **Spearman Correlation**: 0.8005
 - **Underestimation Rate**: 73.50% (systematic bias)
@@ -49,8 +49,8 @@ For detailed setup instructions, see [SETUP.md](SETUP.md).
 
 ### Combined Model (Hazard Score)
 
-- **RMSE**: 389.19 hectares
-- **MAE**: 77.45 hectares
+- **RMSE**: 1.931 (log scale) or 389.19 hectares (original scale)
+- **MAE**: 1.286 (log scale) 77.45 hectares (original scale)
 - **R²**: 0.4122
 - **Spearman Correlation**: 0.8039
 

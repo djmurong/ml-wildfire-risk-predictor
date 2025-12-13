@@ -262,13 +262,23 @@ def combine_predictions(data_path=None, output_path=None):
             ignition_accuracy = (ignition_pred_binary == results.loc[ignition_mask, 'actual_ignition']).mean()
             print(f"Ignition prediction accuracy: {ignition_accuracy:.4f}")
         
-        # Burned area prediction error
+        # A-model prediction error (evaluate in log space, as the model was trained)
+        if 'actual_log_burned_area' in results.columns:
+            log_area_mask = results['actual_log_burned_area'].notna() & (results['actual_burned_area'].notna()) & (results['actual_burned_area'] > 0)
+            if log_area_mask.sum() > 0:
+                # Evaluate in log space (as the model was trained)
+                log_mae = np.abs(results.loc[log_area_mask, 'log_burned_area'] - results.loc[log_area_mask, 'actual_log_burned_area']).mean()
+                log_rmse = np.sqrt(((results.loc[log_area_mask, 'log_burned_area'] - results.loc[log_area_mask, 'actual_log_burned_area']) ** 2).mean())
+                print(f"A-model (log space) MAE:  {log_mae:.4f}")
+                print(f"A-model (log space) RMSE: {log_rmse:.4f}")
+        
+        # Burned area prediction error (original scale, after exponentiating)
         area_mask = results['actual_burned_area'].notna() & (results['actual_burned_area'] > 0)
         if area_mask.sum() > 0:
             mae = np.abs(results.loc[area_mask, 'burned_area'] - results.loc[area_mask, 'actual_burned_area']).mean()
             rmse = np.sqrt(((results.loc[area_mask, 'burned_area'] - results.loc[area_mask, 'actual_burned_area']) ** 2).mean())
-            print(f"Burned area MAE: {mae:.4f}")
-            print(f"Burned area RMSE: {rmse:.4f}")
+            print(f"Burned area (original scale) MAE:  {mae:.4f} hectares")
+            print(f"Burned area (original scale) RMSE: {rmse:.4f} hectares")
         
         # Combined hazard score evaluation
         print("\n" + "=" * 70)
@@ -301,6 +311,20 @@ def combine_predictions(data_path=None, output_path=None):
             print(f"  MAE:  {mae:.4f} hectares")
             print(f"  R²:   {r2:.4f}")
             print(f"  Spearman Correlation: {spearman_corr:.4f} (p={spearman_p:.4e})")
+            
+            # Log-scale metrics (only on samples where both predicted and actual > 0)
+            log_mask = (y_pred > 0) & (y_true > 0)
+            if log_mask.sum() > 0:
+                y_pred_log = np.log(y_pred[log_mask])
+                y_true_log = np.log(y_true[log_mask])
+                
+                log_rmse = np.sqrt(mean_squared_error(y_true_log, y_pred_log))
+                log_mae = mean_absolute_error(y_true_log, y_pred_log)
+                
+                print(f"  Log RMSE: {log_rmse:.4f}")
+                print(f"  Log MAE:  {log_mae:.4f}")
+            else:
+                print("\nLog-Scale Metrics: Not computed (no samples with both predicted and actual > 0)")
     
     return results
 
