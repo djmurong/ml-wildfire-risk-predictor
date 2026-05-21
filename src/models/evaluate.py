@@ -11,7 +11,13 @@ import joblib
 from pathlib import Path
 import sys
 
-PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data/processed"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.models.evaluation_utils import clip_log1p_burned_area
+
+PROCESSED_DIR = PROJECT_ROOT / "data/processed"
 MODELS_DIR = Path(__file__).resolve().parents[2] / "models/final"
 
 
@@ -165,7 +171,9 @@ def evaluate_model(
     # Make predictions
     print("\nMaking predictions...")
     preds = model.predict(X_test)
-    
+    if model_type == "regressor" and target_col == "log_burned_area":
+        preds = clip_log1p_burned_area(preds)
+
     # Calculate metrics
     print("\n" + "="*70)
     print("Test Set Evaluation Metrics")

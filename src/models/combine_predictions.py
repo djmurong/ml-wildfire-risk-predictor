@@ -6,7 +6,7 @@ Hazard Score = P(ignition) × E[burned_area | ignition]
 This implements the two-head approach where:
 - P-model predicts probability of ignition
 - A-model predicts conditional log(burned_area) given ignition
-- Combined: hazard = p_ignition × exp(log_burned_area)
+- Combined: hazard = p_ignition × expm1(log_burned_area)
 """
 import pandas as pd
 import numpy as np
@@ -14,7 +14,18 @@ import joblib
 from pathlib import Path
 import sys
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from scipy.stats import spearmanr
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.models.evaluation_utils import (
+    actual_hazard,
+    clip_log1p_burned_area,
+    evaluate_hazard,
+    hazard_from_heads,
+    print_hazard_metrics,
+)
 
 PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data/processed"
 MODELS_DIR = Path(__file__).resolve().parents[2] / "models/final"
@@ -210,15 +221,17 @@ def combine_predictions(data_path=None, output_path=None):
     print(f"  ✓ P-model predictions: {len(p_ignition)} samples")
     print(f"     Ignition probability range: [{p_ignition.min():.4f}, {p_ignition.max():.4f}]")
     
-    # A-model: conditional log(burned_area) given ignition
-    # Use features in the exact order A-model expects
-    log_burned_area = a_model.predict(X_a)
+    # A-model: log1p(burned_area), clipped to training range (same as baseline)
+    train_path = PROCESSED_DIR / "train.csv"
+    train_df = pd.read_csv(train_path) if train_path.exists() else None
+    log_burned_area = clip_log1p_burned_area(a_model.predict(X_a), train_df)
     print(f"  ✓ A-model predictions: {len(log_burned_area)} samples")
     print(f"     Log(burned_area) range: [{log_burned_area.min():.4f}, {log_burned_area.max():.4f}]")
-    
-    # Combine: hazard = p_ignition × exp(log_burned_area)
-    burned_area = np.exp(log_burned_area)
-    hazard_score = p_ignition * burned_area
+
+    burned_area = np.maximum(np.expm1(log_burned_area), 0.0)
+    hazard_score = hazard_from_heads(
+        p_ignition, log_burned_area, train_df=train_df, clip_log=False
+    )
     
     print(f"  ✓ Combined hazard scores: {len(hazard_score)} samples")
     print(f"     Hazard score range: [{hazard_score.min():.4f}, {hazard_score.max():.4f}]")
@@ -284,47 +297,18 @@ def combine_predictions(data_path=None, output_path=None):
         print("\n" + "=" * 70)
         print("Combined Hazard Score Evaluation")
         print("=" * 70)
-        
-        # Compute actual hazard: 0 if no ignition, burned_area if ignition occurred
-        results['actual_hazard'] = np.where(
-            results['actual_ignition'] == 1,
-            results['actual_burned_area'],
-            0.0
+
+        results["actual_hazard"] = actual_hazard(
+            results["actual_ignition"].values,
+            results["actual_burned_area"].values,
         )
-        
-        # Filter to samples with valid actual values
-        valid_mask = results['actual_ignition'].notna() & results['actual_burned_area'].notna()
+
+        valid_mask = results["actual_ignition"].notna() & results["actual_burned_area"].notna()
         if valid_mask.sum() > 0:
-            y_pred = results.loc[valid_mask, 'hazard_score'].values
-            y_true = results.loc[valid_mask, 'actual_hazard'].values
-            
-            # Overall metrics
-            rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-            mae = mean_absolute_error(y_true, y_pred)
-            r2 = r2_score(y_true, y_pred)
-            
-            # Spearman correlation (rank correlation)
-            spearman_corr, spearman_p = spearmanr(y_true, y_pred)
-            
-            print(f"\nOverall Metrics (all {valid_mask.sum()} samples):")
-            print(f"  RMSE: {rmse:.4f} hectares")
-            print(f"  MAE:  {mae:.4f} hectares")
-            print(f"  R²:   {r2:.4f}")
-            print(f"  Spearman Correlation: {spearman_corr:.4f} (p={spearman_p:.4e})")
-            
-            # Log-scale metrics (only on samples where both predicted and actual > 0)
-            log_mask = (y_pred > 0) & (y_true > 0)
-            if log_mask.sum() > 0:
-                y_pred_log = np.log(y_pred[log_mask])
-                y_true_log = np.log(y_true[log_mask])
-                
-                log_rmse = np.sqrt(mean_squared_error(y_true_log, y_pred_log))
-                log_mae = mean_absolute_error(y_true_log, y_pred_log)
-                
-                print(f"  Log RMSE: {log_rmse:.4f}")
-                print(f"  Log MAE:  {log_mae:.4f}")
-            else:
-                print("\nLog-Scale Metrics: Not computed (no samples with both predicted and actual > 0)")
+            y_pred = results.loc[valid_mask, "hazard_score"].values
+            y_true = results.loc[valid_mask, "actual_hazard"].values
+            print(f"\nMetrics (all {valid_mask.sum()} samples):")
+            print_hazard_metrics(evaluate_hazard(y_true, y_pred), title="")
     
     return results
 

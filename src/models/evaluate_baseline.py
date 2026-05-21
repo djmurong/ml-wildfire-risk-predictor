@@ -4,7 +4,7 @@ Evaluate baseline models and combine their predictions to compute hazard scores.
 This evaluates:
 - P-model baseline: Logistic Regression for ignition classification
 - A-model baseline: Linear Regression for log(burned_area) regression
-- Combined: hazard_score = P(ignition) × exp(log_burned_area)
+- Combined: hazard_score = P(ignition) × expm1(log_burned_area)
 """
 import pandas as pd
 import numpy as np
@@ -18,7 +18,19 @@ from sklearn.metrics import (
 )
 from scipy.stats import spearmanr
 
-PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data/processed"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.models.evaluation_utils import (
+    actual_hazard,
+    clip_log1p_burned_area,
+    evaluate_hazard,
+    hazard_from_heads,
+    print_hazard_metrics,
+)
+
+PROCESSED_DIR = PROJECT_ROOT / "data/processed"
 MODELS_DIR = Path(__file__).resolve().parents[2] / "models/final"
 OUTPUT_DIR = Path(__file__).resolve().parents[2] / "models/final/predictions"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -155,15 +167,17 @@ def evaluate_baseline_models(data_path=None, output_path=None):
     print(f"  ✓ P-model baseline predictions: {len(p_ignition)} samples")
     print(f"     Ignition probability range: [{p_ignition.min():.4f}, {p_ignition.max():.4f}]")
     
-    # A-model baseline: conditional log(burned_area) given ignition
-    # Use features in exact order from saved list
-    log_burned_area = a_baseline.predict(X_a)
+    # A-model baseline: log1p(burned_area), clipped to training range (same as XGBoost)
+    train_path = PROCESSED_DIR / "train.csv"
+    train_df = pd.read_csv(train_path) if train_path.exists() else None
+    log_burned_area = clip_log1p_burned_area(a_baseline.predict(X_a), train_df)
     print(f"  ✓ A-model baseline predictions: {len(log_burned_area)} samples")
     print(f"     Log(burned_area) range: [{log_burned_area.min():.4f}, {log_burned_area.max():.4f}]")
-    
-    # Combine: hazard = p_ignition × exp(log_burned_area)
-    burned_area = np.exp(log_burned_area)
-    hazard_score = p_ignition * burned_area
+
+    burned_area = np.maximum(np.expm1(log_burned_area), 0.0)
+    hazard_score = hazard_from_heads(
+        p_ignition, log_burned_area, train_df=train_df, clip_log=False
+    )
     
     print(f"  ✓ Combined hazard scores: {len(hazard_score)} samples")
     print(f"     Hazard score range: [{hazard_score.min():.4f}, {hazard_score.max():.4f}]")
@@ -282,14 +296,32 @@ def evaluate_baseline_models(data_path=None, output_path=None):
             ignition_accuracy = (ignition_pred_binary == results.loc[ignition_mask, 'actual_ignition']).mean()
             print(f"Ignition prediction accuracy: {ignition_accuracy:.4f}")
         
-        # Burned area prediction error
+        # Burned area prediction error (original scale)
         area_mask = results['actual_burned_area'].notna() & (results['actual_burned_area'] > 0)
         if area_mask.sum() > 0:
             mae = np.abs(results.loc[area_mask, 'burned_area'] - results.loc[area_mask, 'actual_burned_area']).mean()
             rmse = np.sqrt(((results.loc[area_mask, 'burned_area'] - results.loc[area_mask, 'actual_burned_area']) ** 2).mean())
-            print(f"Burned area MAE: {mae:.4f} km²")
-            print(f"Burned area RMSE: {rmse:.4f} km²")
-    
+            print(f"Burned area MAE: {mae:.4f} hectares")
+            print(f"Burned area RMSE: {rmse:.4f} hectares")
+
+        # Combined hazard evaluation
+        if 'actual_ignition' in results.columns:
+            results['actual_hazard'] = actual_hazard(
+                results['actual_ignition'].values,
+                results['actual_burned_area'].values,
+            )
+            valid_mask = results['actual_ignition'].notna() & results['actual_burned_area'].notna()
+            if valid_mask.sum() > 0:
+                print("\n" + "=" * 70)
+                print("Combined Hazard Score Evaluation")
+                print("=" * 70)
+                y_true = results.loc[valid_mask, 'actual_hazard'].values
+                y_pred = results.loc[valid_mask, 'hazard_score'].values
+                print_hazard_metrics(
+                    evaluate_hazard(y_true, y_pred),
+                    title="Baseline combined hazard",
+                )
+
     return results
 
 

@@ -22,7 +22,13 @@ from pathlib import Path
 import sys
 import random
 
-PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data/processed"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.models.evaluation_utils import clip_log1p_burned_area, hazard_from_heads
+
+PROCESSED_DIR = PROJECT_ROOT / "data/processed"
 MODELS_DIR = Path(__file__).resolve().parents[1] / "models/final"
 RAW_DIR = Path(__file__).resolve().parents[1] / "data/raw/wildfirespreadts"
 
@@ -204,18 +210,20 @@ def make_prediction(sample, verbose=True):
     if verbose:
         print("\n6. Running A-model (conditional burned area)...")
     
-    log_burned_area = a_model.predict(X_a)[0]
-    burned_area = np.exp(log_burned_area)
-    
+    log_burned_area = clip_log1p_burned_area(a_model.predict(X_a))[0]
+    burned_area = float(np.maximum(np.expm1(log_burned_area), 0.0))
+
     if verbose:
         print(f"   → Log(Burned Area): {log_burned_area:.4f}")
         print(f"   → Expected Burned Area (if ignition): {burned_area:.2f} hectares")
-    
+
     # Combine predictions
     if verbose:
         print("\n7. Computing hazard score...")
-    
-    hazard_score = p_ignition * burned_area
+
+    hazard_score = float(
+        hazard_from_heads(np.array([p_ignition]), np.array([log_burned_area]), clip_log=False)[0]
+    )
     
     if verbose:
         print(f"   → Hazard Score = P(ignition) × E[burned_area | ignition]")
